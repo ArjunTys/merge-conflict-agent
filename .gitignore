@@ -1,0 +1,16 @@
+# Environment variables / secrets
+.env
+
+# Python bytecode cache
+__pycache__/
+*.pyc
+
+# Virtual environment
+llm/
+
+# Generated output
+resolutions.json
+
+# OS / editor junk
+.DS_Store
+.vscode/
