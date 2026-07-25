@@ -4,7 +4,12 @@ An AI agent that automatically resolves Git merge conflicts. When two branches c
 
 ## Why this exists
 
-The company's Cowork system has many members committing to the same branches daily, which generates merge conflicts faster than humans can resolve them. Development is fast, but delivery is slow because conflict resolution is the bottleneck. This agent removes that bottleneck by resolving conflicts automatically while keeping a human in the loop for approval.
+In development environments where many automated agents commit to the same
+branches — for example, AI systems that read change requests, write code, and
+push commits on their own — merge conflicts pile up faster than developers can
+resolve them by hand. Development becomes fast, but delivery slows down because
+conflict resolution is the bottleneck. This agent removes that bottleneck by
+resolving conflicts automatically while keeping a human in the loop for approval.
 
 ## How it works (the pipeline)
 
