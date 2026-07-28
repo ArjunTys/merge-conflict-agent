@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conflict {{ c['id'] }} · {{ c['branch_b'] }} → {{ c['branch_a'] }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F3F5F7; --surface:#FFFFFF; --ink:#18222E; --muted:#5B6875;
+    --line:#DDE3E9;
+    --main:#3E63C4;      /* rail + pane colour for the main branch   */
+    --incoming:#1F7A5C;  /* rail + pane colour for the incoming side */
+    --accept:#1E7A46; --reject:#A8442A;
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --disp:"Space Grotesk",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--paper);color:var(--ink);font-family:var(--mono);
+       font-size:14px;line-height:1.55;padding:0 20px 80px}
+  .wrap{max-width:1100px;margin:0 auto}
+
+  /* ---------- header: the merge graph -------------------------------- */
+  header{padding:34px 0 26px;border-bottom:1px solid var(--line)}
+  .crumb{font-size:12px;color:var(--muted);letter-spacing:.06em;
+         text-transform:uppercase}
+  h1{font-family:var(--disp);font-weight:700;font-size:26px;margin:6px 0 18px}
+  h1 .arrow{color:var(--muted);font-weight:500}
+  .graph{display:block;max-width:520px}
+  .graph text{font-family:var(--mono);font-size:11.5px;fill:var(--muted)}
+  .meta{margin-top:14px;display:flex;gap:26px;flex-wrap:wrap;
+        font-size:12.5px;color:var(--muted)}
+  .meta b{color:var(--ink);font-weight:600}
+
+  /* ---------- diff panes --------------------------------------------- */
+  .panes{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:30px}
+  @media(max-width:760px){.panes{grid-template-columns:1fr}}
+  .pane{background:var(--surface);border:1px solid var(--line);
+        border-top:3px solid var(--pane);border-radius:6px;overflow:hidden}
+  .pane.main{--pane:var(--main)} .pane.incoming{--pane:var(--incoming)}
+  .pane h2{font-family:var(--disp);font-size:13.5px;font-weight:500;
+           padding:10px 14px;border-bottom:1px solid var(--line);
+           display:flex;justify-content:space-between;align-items:baseline}
+  .pane h2 .tag{color:var(--pane);font-family:var(--mono);font-size:12px;
+                font-weight:600}
+  pre{padding:14px 16px;overflow-x:auto;font-size:13px;line-height:1.6;
+      counter-reset:ln;white-space:pre}
+  pre span.l{display:block}
+  pre span.l::before{counter-increment:ln;content:counter(ln);
+      display:inline-block;width:2.2em;margin-right:1.1em;text-align:right;
+      color:#AEB8C2;user-select:none}
+
+  /* ---------- resolution --------------------------------------------- */
+  section.res{margin-top:34px}
+  section.res>h2{font-family:var(--disp);font-size:16px;font-weight:700;
+                 margin-bottom:4px}
+  .rev{font-size:12px;color:var(--muted);margin-bottom:12px}
+  .reason{background:var(--surface);border:1px solid var(--line);
+          border-radius:6px;padding:14px 16px;font-size:13px;
+          color:var(--muted);margin-bottom:14px}
+  .reason b{color:var(--ink)}
+  .proposal{background:var(--surface);border:1px solid var(--line);
+            border-radius:6px}
+  textarea{width:100%;min-height:220px;border:0;background:transparent;
+           font:inherit;font-size:13px;line-height:1.6;padding:14px 16px;
+           resize:vertical;color:var(--ink)}
+  textarea:focus{outline:2px solid var(--main);outline-offset:-2px}
+  .hint{font-size:12px;color:var(--muted);margin-top:6px}
+
+  /* ---------- decision ----------------------------------------------- */
+  .decide{margin-top:22px}
+  label[for=fb]{display:block;font-size:12.5px;color:var(--muted);
+                margin-bottom:6px}
+  #fb{width:100%;min-height:64px;border:1px solid var(--line);
+      border-radius:6px;background:var(--surface);font:inherit;
+      font-size:13px;padding:10px 12px;resize:vertical}
+  #fb:focus{outline:2px solid var(--main);outline-offset:-2px}
+  .fb-warn{color:var(--reject);font-size:12.5px;margin-top:6px;
+           {% if not request.args.get('need_feedback') %}display:none{% endif %}}
+  .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+  button{font-family:var(--disp);font-size:14px;font-weight:500;
+         padding:10px 22px;border-radius:6px;border:1px solid transparent;
+         cursor:pointer}
+  button:focus-visible{outline:3px solid var(--main);outline-offset:2px}
+  .b-accept{background:var(--accept);color:#fff}
+  .b-edit{background:var(--surface);border-color:var(--line);color:var(--ink)}
+  .b-reject{background:var(--surface);border-color:var(--reject);
+            color:var(--reject)}
+  .b-abort{background:none;border:0;color:var(--muted);font-size:12.5px;
+           text-decoration:underline;padding:10px 6px}
+
+  /* ---------- decided banner ----------------------------------------- */
+  .banner{margin-top:30px;padding:16px 18px;border-radius:6px;
+          background:var(--surface);border:1px solid var(--line);
+          border-left:4px solid var(--st);font-size:13.5px}
+  .banner b{font-family:var(--disp)}
+  @media (prefers-reduced-motion: no-preference){
+    .pane,.res{animation:up .35s ease both}
+    @keyframes up{from{opacity:0;transform:translateY(6px)}to{opacity:1}}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="crumb">merge conflict · review &amp; resolve</div>
+  <h1>{{ c['branch_b'] }} <span class="arrow">→</span> {{ c['branch_a'] }}</h1>
+
+  <!-- signature: the merge graph. Rail colours match the pane borders,
+       so this diagram is also the legend for the diff below. -->
+  <svg class="graph" viewBox="0 0 520 84" role="img"
+       aria-label="Branch {{ c['branch_b'] }} merging into {{ c['branch_a'] }}">
+    <path d="M20 26 H300 C 360 26, 380 52, 440 52" fill="none"
+          stroke="var(--incoming)" stroke-width="3"/>
+    <path d="M20 52 H500" fill="none" stroke="var(--main)" stroke-width="3"/>
+    <circle cx="20" cy="26" r="5" fill="var(--incoming)"/>
+    <circle cx="20" cy="52" r="5" fill="var(--main)"/>
+    <circle cx="440" cy="52" r="6" fill="var(--ink)"/>
+    <text x="34" y="20">{{ c['branch_b'] }}</text>
+    <text x="34" y="72">{{ c['branch_a'] }}</text>
+    <text x="452" y="56">merge</text>
+  </svg>
+
+  <div class="meta">
+    {% if c['file_path'] %}<span>file <b>{{ c['file_path'] }}</b></span>{% endif %}
+    <span>conflict <b>{{ c['id'] }}</b></span>
+    {% if c['confidence'] %}<span>agent confidence <b>{{ c['confidence'] }}</b></span>{% endif %}
+  </div>
+  {% if c['summary'] %}<p style="margin-top:12px;max-width:70ch;color:var(--muted)">{{ c['summary'] }}</p>{% endif %}
+</header>
+
+<div class="panes">
+  <div class="pane main">
+    <h2>version on {{ c['branch_a'] }} <span class="tag">ours</span></h2>
+    <pre>{% for line in c['main_code'].splitlines() %}<span class="l">{{ line }}</span>{% endfor %}</pre>
+  </div>
+  <div class="pane incoming">
+    <h2>version on {{ c['branch_b'] }} <span class="tag">incoming</span></h2>
+    <pre>{% for line in c['incoming_code'].splitlines() %}<span class="l">{{ line }}</span>{% endfor %}</pre>
+  </div>
+</div>
+
+{% if c['status'] == 'pending' %}
+<form class="res" method="post" action="/conflict/{{ c['id'] }}/decide">
+  <h2>Proposed resolution</h2>
+  <div class="rev">revision {{ c['revision'] }}</div>
+  {% if c['reasoning'] %}
+  <div class="reason"><b>Agent's reasoning ·</b> {{ c['reasoning'] }}</div>
+  {% endif %}
+  <div class="proposal">
+    <textarea name="edited_code" spellcheck="false"
+              aria-label="Proposed merged code, editable">{{ c['proposed_code'] }}</textarea>
+  </div>
+  <p class="hint">The code above is editable. Leave it untouched and accept,
+     or change it and choose “Merge my edit”.</p>
+
+  <div class="decide">
+    <label for="fb">Feedback for the agent (required to request changes)</label>
+    <textarea id="fb" name="feedback"
+              placeholder="e.g. keep the rate limiter from main, the logging call is redundant"></textarea>
+    <div class="fb-warn">Add feedback so the agent knows what to change.</div>
+    <div class="actions">
+      <button class="b-accept" name="action" value="accept">Accept and merge</button>
+      <button class="b-edit"   name="action" value="edit">Merge my edit</button>
+      <button class="b-reject" name="action" value="reject">Request changes</button>
+      <button class="b-abort"  name="action" value="abort"
+              onclick="return confirm('Abort this merge entirely?')">abort merge</button>
+    </div>
+  </div>
+</form>
+{% else %}
+<section class="res">
+  <h2>Proposed resolution</h2>
+  <div class="rev">revision {{ c['revision'] }}</div>
+  <div class="proposal"><pre>{% for line in (c['edited_code'] or c['proposed_code']).splitlines() %}<span class="l">{{ line }}</span>{% endfor %}</pre></div>
+  <div class="banner" style="--st:{{ {'accepted':'var(--accept)','edited':'var(--accept)','rejected':'var(--reject)','aborted':'var(--muted)'}[c['status']] }}">
+    {% if c['status'] in ('accepted','edited') %}
+      <b>Approved.</b> The agent will merge{% if c['status']=='edited' %} your edited version{% endif %}.
+    {% elif c['status'] == 'rejected' %}
+      <b>Changes requested.</b> The agent is reworking the fix with your feedback
+      and will update this page.
+    {% else %}
+      <b>Merge aborted.</b> No changes will be made.
+    {% endif %}
+    {% if c['feedback'] %}<div style="margin-top:6px;color:var(--muted)">“{{ c['feedback'] }}”</div>{% endif %}
+  </div>
+</section>
+{% endif %}
+
+</div>
+</body>
+</html>

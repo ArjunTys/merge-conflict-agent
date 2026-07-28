@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Merge conflicts</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--paper:#F3F5F7;--surface:#fff;--ink:#18222E;--muted:#5B6875;
+        --line:#DDE3E9;--main:#3E63C4;--incoming:#1F7A5C;
+        --mono:"IBM Plex Mono",ui-monospace,monospace;
+        --disp:"Space Grotesk",system-ui,sans-serif}
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--paper);color:var(--ink);font-family:var(--mono);
+       font-size:14px;padding:0 20px 60px}
+  .wrap{max-width:760px;margin:0 auto}
+  header{padding:34px 0 20px}
+  h1{font-family:var(--disp);font-size:24px}
+  .sub{color:var(--muted);font-size:12.5px;margin-top:4px}
+  a.row{display:flex;justify-content:space-between;gap:14px;align-items:baseline;
+        background:var(--surface);border:1px solid var(--line);border-radius:6px;
+        padding:14px 16px;margin-top:12px;text-decoration:none;color:var(--ink)}
+  a.row:hover{border-color:var(--main)}
+  .branches b{color:var(--incoming)} .branches i{color:var(--main);font-style:normal}
+  .st{font-size:12px;color:var(--muted)}
+  .st.pending{color:var(--main);font-weight:600}
+  .empty{margin-top:26px;color:var(--muted)}
+</style>
+</head>
+<body><div class="wrap">
+<header><h1>Merge conflicts</h1>
+<div class="sub">every open conflict awaiting a decision, newest first</div></header>
+{% for c in conflicts %}
+  <a class="row" href="/conflict/{{ c['id'] }}">
+    <span class="branches"><b>{{ c['branch_b'] }}</b> → <i>{{ c['branch_a'] }}</i>
+      {% if c['file_path'] %} · {{ c['file_path'] }}{% endif %}</span>
+    <span class="st {{ c['status'] }}">{{ c['status'] }} · rev {{ c['revision'] }}</span>
+  </a>
+{% else %}
+  <p class="empty">No conflicts right now. When the agent detects one, it
+  appears here and a review link goes out in chat.</p>
+{% endfor %}
+</div></body></html>
